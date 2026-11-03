@@ -64,6 +64,16 @@ export const config = {
   host: clean(env.HOST) || "0.0.0.0",
   appOrigin: withoutTrailingSlash(clean(env.APP_ORIGIN)),
   syncIntervalMinutes: Math.max(5, Number(env.SYNC_INTERVAL_MINUTES || 15)),
+  // Optional OAuth path for personal accounts the admin hasn't locked down.
+  google: {
+    clientId: clean(env.GOOGLE_CLIENT_ID),
+    clientSecret: clean(env.GOOGLE_CLIENT_SECRET),
+    redirectUri: withoutTrailingSlash(clean(env.GOOGLE_REDIRECT_URI)) || null,
+    scopes: [
+      "https://www.googleapis.com/auth/classroom.courses.readonly",
+      "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
+    ],
+  },
   classroom: {
     // The browser's Cookie header for an open classroom.google.com session.
     // Copied straight from DevTools, or set CLASSROOM_COOKIE_FILE to a path.
