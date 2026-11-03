@@ -117,6 +117,17 @@ export function Settings({
           }
         />
 
+        {data.source !== "google" ? (
+          <p className="inline-warning">
+            Heads up: Google showed “Access blocked — your institution&apos;s
+            admin needs to review this app” ({"error 400 access_not_configured"}
+            ). That means your school blocked outside apps for student accounts
+            — asking your administrator to allow “classroom-copilot” is the
+            only fix for the API path. The paste and cookie options below don&apos;t
+            need the admin at all.
+          </p>
+        ) : null}
+
         {data.source === "google" && data.profile ? (
           <div className="account-row">
             {data.profile.picture ? (
