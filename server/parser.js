@@ -26,7 +26,12 @@ const WEEKDAYS = {
 const WEEKDAY_PATTERN = "sun(day)?|mon(day)?|tue(s(day)?)?|wed(nesday)?|thu(r(s(day)?)?)?|fri(day)?|sat(urday)?";
 
 const JUNK_LINE =
-  /^(show( all)?|to-?do|assigned|missing|notifications?|classroom|google classroom|calend(a|ur)|workload|nav(igation)?|menu|search|settings|workspace|all courses|no (work|items)|nothing here|reset|clear( all)?|cancel|save|delete|edit|add|close|open|details|comments?|private|posted|share|term|side panel|announcements?|upcoming|this week|later|overdue|today|tomorrow)\b[.!…]*$/i;
+  /^(show( all)?|to-?do|assigned|missing|missing|notifications?|classroom|google classroom|calend(a|ur)|workload|nav(igation)?|menu|search|settings|workspace|all courses|no (work|items)|nothing here|reset|clear( all)?|cancel|save|delete|edit|add|close|open|details|comments?|private|posted|share|term|side panel|announcements?|upcoming|this week|later|overdue|today|tomorrow|skip to main content|main menu|archived classes|all (classes|items|work)|collapse|expand|done|done \d+|out(standing)?|in\s*box|subject|section)\b[.!…]*$/i;
+
+// Google UI furniture that shows up in the rendered To-do text: icon names,
+// "Posted Friday, Apr 17" metadata chips, tiny section labels like "9O,9P".
+const UI_JUNK =
+  /(^posted\b.{0,60}$|^keyboard_arrow\w*$|^[A-Za-z0-9]{1,3},[A-Za-z0-9]{1,3}$|^assignment$|^announcement$|^help and feedback$|^screen reader support enabled\.?$)/i;
 
 const DUE_LINE = /^(?:due(?:\s*by)?|dUE)\s*[:\-]?\s*(.+)$/i;
 const NO_DUE_LINE = /^no due date\b/i;
@@ -58,16 +63,6 @@ function dueDateFromPhrase(phrase, now) {
   if (/next week\b/.test(text)) return withTime(new Date(dayStart + 7 * DAY));
   if (/yesterday/.test(text)) return withTime(new Date(dayStart - DAY));
 
-  const weekday = text.match(new RegExp(`\\b(${WEEKDAY_PATTERN})\\b`, "i"));
-  if (weekday) {
-    const token = weekday[0].toLowerCase().replace(/[^a-z]/g, "");
-    const target = WEEKDAYS[token];
-    if (target !== undefined) {
-      const delta = (target - new Date(dayStart).getDay() + 7) % 7;
-      return withTime(new Date(dayStart + delta * DAY));
-    }
-  }
-
   const monthFirst = text.match(
     new RegExp(`\\b(${MONTH_PATTERN})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?`, "i"),
   );
@@ -98,6 +93,18 @@ function dueDateFromPhrase(phrase, now) {
       if (candidate.getTime() < dayStart - 14 * DAY) year = currentYear + 1;
     }
     return withTime(new Date(year ?? currentYear, month - 1, day));
+  }
+
+  // Weekday-only phrases ("Due Tuesday") resolve to the nearest such day.
+  // Checked after explicit dates so "Tuesday, Apr 14" keeps its own month/day.
+  const weekday = text.match(new RegExp(`\\b(${WEEKDAY_PATTERN})\\b`, "i"));
+  if (weekday) {
+    const token = weekday[0].toLowerCase().replace(/[^a-z]/g, "");
+    const target = WEEKDAYS[token];
+    if (target !== undefined) {
+      const delta = (target - new Date(dayStart).getDay() + 7) % 7;
+      return withTime(new Date(dayStart + delta * DAY));
+    }
   }
 
   return null;
@@ -133,6 +140,7 @@ function isJunk(line) {
   return (
     value.length < 2 ||
     JUNK_LINE.test(value) ||
+    UI_JUNK.test(value) ||
     /^[\d\s]+$/.test(value) ||
     /^[-•*·—–]+$/.test(value) ||
     /^v?\d+\.\d+(\.\d+)?$/.test(value)
@@ -260,6 +268,23 @@ export function parsePaste(text, now = Date.now()) {
       continue;
     }
 
+    // A bare date chip with no "Due" prefix — the Classroom To-do cards end
+    // with the date alone ("Tuesday, Apr 14"), not a sentence.
+    if (/^[A-Za-z]{5,9}day\s*,|^[A-Za-z]{3,9}\s+\d{1,2}\b|^\d{1,2}\s+[A-Za-z]{3,9}\b/.test(value)) {
+      const parsedChip = dueDateFromPhrase(value, now);
+      if (parsedChip) {
+        if (pendingTitle) {
+          pendingDue = parsedChip;
+          flushPending();
+        } else {
+          pendingDue = parsedChip;
+        }
+        continue;
+      }
+      // Date-shaped but unparseable — never let it become a fake title.
+      continue;
+    }
+
     if (NO_DUE_LINE.test(value)) {
       flushPending();
       pendingDue = null;
@@ -324,6 +349,11 @@ export function parsePaste(text, now = Date.now()) {
     if (pendingTitle && isCourse) {
       // The previous card was title-only; this line opens the next.
       flushPending();
+      // Classroom To-do cards name their course AFTER the title, so the card
+      // just flushed is the one this course line belongs to.
+      if (drafts.length && drafts[drafts.length - 1].courseName === "(No course)") {
+        drafts[drafts.length - 1] = { ...drafts[drafts.length - 1], courseName: value };
+      }
       currentCourse = value;
       pendingCourse = value;
       continue;

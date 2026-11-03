@@ -15,6 +15,7 @@
 
 import { config } from "./config.js";
 import { AppError } from "./errors.js";
+import { harvestClassroom, harvestEnabled } from "./harvest.js";
 
 export function scraperConfigured() {
   return Boolean(config.classroom.cookies);
@@ -394,12 +395,24 @@ function extractCourseNames(blocks) {
  * and Missing To-do pages. Returns items ready for mergeImport.
  */
 export async function scrapeClassroom() {
-  if (!scraperConfigured()) {
+  if (!scraperConfigured() && !harvestEnabled()) {
     throw new AppError(
       "classroom_no_cookies",
-      "Set CLASSROOM_COOKIES in .env to enable Classroom auto-sync.",
+      "No data source: run `npm run classroom-login` once to sign the browser sync in, or set CLASSROOM_COOKIES in .env.",
       400,
     );
+  }
+
+  // Preferred path: launch a real headless browser, let the Classroom SPA
+  // fully render its To-do pages, and read them — the only way past the
+  // app-shell problem and the school's API restrictions.
+  if (harvestEnabled()) {
+    try {
+      return await harvestClassroom();
+    } catch (error) {
+      if (error?.code === "classroom_cookies_expired") throw error;
+      // No usable browser? Fall through to the direct-fetch heuristic.
+    }
   }
 
   const warnings = [];

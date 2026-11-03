@@ -78,6 +78,11 @@ export const config = {
     // The browser's Cookie header for an open classroom.google.com session.
     // Copied straight from DevTools, or set CLASSROOM_COOKIE_FILE to a path.
     cookies: clean(env.CLASSROOM_COOKIES) || readCookieFile(env.CLASSROOM_COOKIE_FILE),
+    // Which local browser the harvesting opens: msedge, chrome, or off.
+    browser: clean(env.CLASSROOM_BROWSER || "").toLowerCase(),
+    // Where the persistent browser profile lives (its own rotation keeps the
+    // session alive). Default: data/browser-profile.
+    profileDir: clean(env.CLASSROOM_BROWSER_PROFILE || ""),
   },
   ai: {
     keys: explicitKeys.filter(Boolean),
@@ -98,6 +103,8 @@ export const config = {
 export function publicConfig() {
   return {
     cookieSync: Boolean(config.classroom.cookies),
+    // True when the automatic sync opens a real headless Edge/Chrome.
+    browserSync: Boolean(config.classroom.cookies) && config.classroom.browser !== "off",
     aiConfigured: Boolean(config.ai.keys.length),
     aiModel: config.ai.models[0],
     discordConfigured: Boolean(config.discord.token),

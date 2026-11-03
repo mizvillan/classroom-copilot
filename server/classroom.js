@@ -2,6 +2,7 @@ import { OAuth2Client } from "google-auth-library";
 
 import { config } from "./config.js";
 import { AppError } from "./errors.js";
+import { harvestEnabled } from "./harvest.js";
 import { scraperConfigured, scrapeClassroom } from "./scraper.js";
 import { cacheStore, tokenStore } from "./store.js";
 import { computeStats, rankAssignments } from "./priority.js";
@@ -514,7 +515,7 @@ export async function syncClassroom(origin) {
     if (tokens?.access_token || tokens?.refresh_token) {
       return googleSyncBody(origin);
     }
-    if (scraperConfigured()) {
+    if (scraperConfigured() || harvestEnabled()) {
       return syncViaScraper();
     }
     throw new AppError(
