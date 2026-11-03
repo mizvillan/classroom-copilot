@@ -142,10 +142,16 @@ export interface Profile {
   picture: string;
 }
 
+export interface GoogleConfig {
+  configured: boolean;
+  redirectUri: string;
+}
+
 export interface Dashboard {
   source: "google" | "demo" | "import";
   connected: boolean;
   profile: Profile | null;
+  google: GoogleConfig;
   courses: Course[];
   assignments: Assignment[];
   stats: Stats;

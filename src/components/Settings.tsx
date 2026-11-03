@@ -7,6 +7,7 @@ import {
   Copy,
   ExternalLink,
   Cookie,
+  GraduationCap,
   ListPlus,
   LogOut,
   MessageSquare,
@@ -38,6 +39,7 @@ export function Settings({
   syncing,
   disconnecting,
   testingDiscord,
+  onConnect,
   onSync,
   onDisconnect,
   onTestDiscord,
@@ -95,6 +97,87 @@ export function Settings({
             app on your phone. Everything runs from this machine.
           </p>
         </div>
+      </section>
+
+      <section className="panel settings-card" id="google">
+        <SettingsHead
+          icon={<GraduationCap size={18} />}
+          title="Google Classroom"
+          subtitle="Sign in with Classroom itself for live sync of all your classes."
+          status={
+            data.source === "google" ? (
+              <span className="pill pill-good">
+                <Check size={12} /> Connected
+              </span>
+            ) : data.source === "import" ? (
+              <span className="pill pill-warn">Paste-imported data</span>
+            ) : (
+              <span className="pill pill-quiet">Not connected</span>
+            )
+          }
+        />
+
+        {data.source === "google" && data.profile ? (
+          <div className="account-row">
+            {data.profile.picture ? (
+              <img src={data.profile.picture} alt="" referrerPolicy="no-referrer" />
+            ) : (
+              <span className="account-avatar">
+                <GraduationCap size={19} />
+              </span>
+            )}
+            <div>
+              <strong>{data.profile.name || "Classroom account"}</strong>
+              <span>{data.profile.email || "Signed in via the Classroom API"}</span>
+            </div>
+            <span className="account-scope">api</span>
+          </div>
+        ) : null}
+
+        {data.google?.configured ? (
+          <>
+            <p className="settings-lede">
+              One click, and the app pulls every active class, coursework and
+              submission state on a schedule. Connecting replaces any pasted
+              rows with your live classes.
+            </p>
+            <div className="settings-actions">
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={onConnect}
+                disabled={data.source === "google"}
+              >
+                <GraduationCap size={14} />
+                {data.source === "google"
+                  ? "Connected — syncing live"
+                  : "Connect Google Classroom"}
+              </button>
+              {data.connected ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={onSync}
+                  disabled={syncing}
+                >
+                  <RefreshCw size={14} className={syncing ? "spin" : ""} />
+                  Sync now
+                </button>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="settings-lede">
+              No Google client configured yet. Paste your To-do page below —
+              or add <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code>{" "}
+              to <code>.env</code>, register this exact redirect URI in the
+              Google Cloud wizard, and this button unlocks:
+            </p>
+            <CodeBlock lines={[data.google?.redirectUri || "http://localhost:8790/api/auth/google/callback"]} />
+          </>
+        )}
+        {data.syncError ? <p className="inline-warning">{data.syncError}</p> : null}
       </section>
 
       <section className="panel settings-card" id="import">

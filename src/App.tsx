@@ -135,9 +135,19 @@ export default function App() {
   }, [load]);
 
   const handleConnect = useCallback(() => {
+    if (data?.google?.configured) {
+      // Full navigation: the server hands the browser to Google's consent
+      // screen, then reroutes back here with the ?google= result — handled
+      // by the effect above.
+      window.location.href = "/api/auth/google";
+      return;
+    }
     changeTab("settings");
-    notify("Paste your Classroom To-do text under “Get your work in” — no Google sign-in needed.", "info");
-  }, [changeTab, notify]);
+    notify(
+      "No Google OAuth client in .env yet — paste your Classroom To-do text under “Get your work in” instead.",
+      "info",
+    );
+  }, [changeTab, notify, data?.google?.configured]);
 
   const handleSync = async () => {
     if (!data?.connected) {

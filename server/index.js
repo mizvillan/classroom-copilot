@@ -115,9 +115,11 @@ async function syncAndNotify(origin) {
 }
 
 async function dashboardPayload(req, { demo = false, origin } = {}) {
-  const { connected, profile } = await connection();
+  const connectionState = await connection();
+  const { connected, profile } = connectionState;
   const useDemo = demo || !connected;
-  const source = useDemo ? "demo" : "google";
+  // "google" means a live Classroom API connection; paste/cookie data is "import".
+  const source = useDemo ? "demo" : connectionState.source;
 
   if (!useDemo) {
     const meta = await getSyncMeta();
@@ -145,6 +147,10 @@ async function dashboardPayload(req, { demo = false, origin } = {}) {
     source,
     connected: stillConnected,
     profile: latestProfile,
+    google: {
+      configured: oauthConfigured(),
+      redirectUri: redirectUriFor(appOrigin(req)),
+    },
     courses: data.courses,
     assignments: data.assignments,
     stats: data.stats,
